@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "projects"
+version = "0.1.0"
+description = ""
+authors = ["Rakshit Makan <rakshitmakan.dev@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pandas = "^2.2.2"
+transformers = "^4.44.2"
+huggingface = "^0.0.1"
+datasets = "^3.0.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

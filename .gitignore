@@ -19,5 +19,6 @@ env/
 .DS_Store
 
 *.lock
-
+/cpu_and_mobile
 data.csv
+*.log*

@@ -1,0 +1,23 @@
+{
+    
+    "phi_onnx" : {
+        "model_name" : "microsoft/Phi-3.5-mini-instruct-onnx", 
+        "model_path" : "/teamspace/studios/this_studio/models/phi_onnx/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4",
+        "model_type" : "onnx",
+        "args" : {
+            "max_length" : 50, 
+            "temperature" : 0.1,
+            "top_k" : 10,
+            "top_p" : 0.9,
+            "repetition_penalty" : 1.0,
+            "do_sample" : true,
+            "num_return_sequences" : 1,
+            "device" : "cpu"
+        }
+    },
+    "phi_tflite" : {
+        "model_name" : "phi",
+        "model_path" : "LLM_Projects/phi_tflite/phi.tflite",
+        "model_type" : "raw"
+    }
+}

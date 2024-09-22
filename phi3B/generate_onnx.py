@@ -1,123 +1,124 @@
-from abc import ABC, abstractmethod
-import onnxruntime as ort
-import numpy as np
-from transformers import AutoTokenizer
-import torch
-from models import HuggingFaceModelHandler
-import os
-class PhiONNXModelHandler(HuggingFaceModelHandler):
-    def __init__(self, device=None):
+import onnxruntime_genai as og
+import time
+
+class PhiONNXModelHandler:
+    def __init__(self, verbose=False, timings=False):
         """
-        Initialize the ONNX model handler by downloading the model and tokenizer.
+        Initialize the phiONNXHandler by loading the ONNX model and tokenizer.
         """
-        super().__init__(device)
-        self.past_key_values = None  # Initialize past key values as None
+        self.verbose = verbose
+        self.timings = timings
+        self.model = None
+        self.tokenizer = None
+        self.tokenizer_stream = None
 
-    def load_model(self, model_path):
+    def load_model(self, model_path=None):
         """
-        Load the ONNX model and tokenizer from Hugging Face.
+        Load the ONNX model and tokenizer.
         """
+        if self.verbose: 
+            print("Loading model...")
+        self.model_path = model_path
 
-        self.option = ort.SessionOptions()
-        self.option.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_EXTENDED
-        # Load the ONNX model using ONNX Runtime
-        self.ort_session = ort.InferenceSession(model_path, self.option, providers=["CPUExecutionProvider"]) 
+        self.model = og.Model(f'{self.model_path}')
+        self.tokenizer = og.Tokenizer(self.model)
+        self.tokenizer_stream = self.tokenizer.create_stream()
 
-        # Load the tokenizer for the model dir path
-        self.tokenizer = AutoTokenizer.from_pretrained(os.path.dirname(model_path))
+        if self.verbose: 
+            print("Model and tokenizer loaded")
 
-    def create_prompt(self, question: str, template: str = "Q: {question}\nA:"):
+    def create_prompt(self, input_text: str, template: str = '<|user|>\n{input} <|end|>\n<|assistant|>'):
         """
-        Create a formatted prompt using a question and a template format is as follows:
-        <|system|>
-        You are a helpful assistant.<|end|>
-        <|user|>
-        How to explain Internet for a medieval knight?<|end|>
-        <|assistant|>
+        Create a prompt using the specified template and input text.
         """
-        template = "<|system|>\nYou are a helpful assistant.<|end|>\n<|user|>\n{question}<|end|>\n<|assistant|>"
-        return template.format(question=question)
+        return template.format(input=input_text)
 
-    def initialize_past_key_values(self, batch_size: int, num_layers: int, seq_length: int, head_size: int):
+    def generate_answer(self, prompt: str, args):
         """
-        Initialize past key values as zero tensors for the first inference.
+        Generate a response based on the prompt and search options passed as arguments.
         """
-        # Initialize past_key_values as zero tensors for the first run
-        return [
-            (np.zeros((batch_size, 32, seq_length, head_size), dtype=np.float32),
-             np.zeros((batch_size, 32, seq_length, head_size), dtype=np.float32))
-            for _ in range(num_layers)
-        ]
-
-
-
-    def generate_answer(self, prompt: str, max_length=4096, temperature=0.1):
-        """
-        Generate an answer based on the prompt using the ONNX model.
-        """
-        # Tokenize the input prompt
-        inputs = self.tokenizer(prompt, return_tensors="np")
-
-        # Extract input_ids and attention_mask from the tokenizer output
-        input_ids = inputs['input_ids'].astype(np.int64)
-        attention_mask = inputs['attention_mask'].astype(np.int64)
-
-        # Initialize past_key_values with zeros for the first pass if None
-        if self.past_key_values is None:
-            batch_size = input_ids.shape[0]
-            num_layers = 32  # From the config, we have 32 layers
-            seq_length = input_ids.shape[1]
-            head_size = 96  # Head size from the config
-            self.past_key_values = self.initialize_past_key_values(batch_size, num_layers, seq_length, head_size)
-
-        # Prepare ONNX model inputs
-        ort_inputs = {
-            "input_ids": input_ids,
-            "attention_mask": attention_mask
+        # Create search options based on the provided arguments
+        do_sample = args.get('do_sample', True)
+        max_length = args.get('max_length', 100)
+        min_length = args.get('min_length', 1)
+        top_p = args.get('top_p', 0.9)
+        top_k = args.get('top_k', 50)
+        temperature = args.get('temperature', 1.0)
+        repetition_penalty = args.get('repetition_penalty', 1.0)
+        
+        search_options = {
+            'do_sample': do_sample,
+            'max_length': max_length,
+            'min_length': min_length,
+            'top_p': top_p,
+            'top_k': top_k,
+            'temperature': temperature,
+            'repetition_penalty': repetition_penalty
         }
 
-        # Pass the initialized past_key_values
-        for i, (key, value) in enumerate(self.past_key_values):
-            ort_inputs[f"past_key_values.{i}.key"] = key
-            ort_inputs[f"past_key_values.{i}.value"] = value
+        # Filter out options that are None (not provided)
+        search_options = {k: v for k, v in search_options.items() if v is not None}
 
-        # Run the ONNX model to generate output
-        ort_outputs = self.ort_session.run(None, ort_inputs)
-        # Extract logits (predictions) from the output (assuming logits are the first output)
-        logits = ort_outputs[0]
+        if self.verbose: 
+            print(f"Encoding prompt: {prompt}")
+        
+        input_tokens = self.tokenizer.encode(prompt)
 
-        # Convert logits to token IDs by taking the argmax (most likely token) along the last dimension
-        token_ids = np.argmax(logits, axis=-1)
+        params = og.GeneratorParams(self.model)
+        params.set_search_options(**search_options)
+        params.input_ids = input_tokens
 
-        # Store past_key_values for future predictions
-        num_past_layers = (len(ort_outputs) - 1) // 2
-        self.past_key_values = [
-            (ort_outputs[i + 1], ort_outputs[i + 2]) for i in range(num_past_layers)
-        ]
+        generator = og.Generator(self.model, params)
 
-        # Flatten the list of generated token IDs (if needed)
-        flat_generated_tokens = token_ids.flatten().tolist()
+        if self.verbose: 
+            print("Generator created, starting generation...")
 
-        # Decode the generated tokens to text
-        generated_text = self.tokenizer.decode(flat_generated_tokens, skip_special_tokens=True)
+        # Timing initialization
+        if self.timings:
+            started_timestamp = time.time()
+            first_token_timestamp = 0
+            first = True
+            new_tokens = []
 
-        return generated_text
+        # Generate tokens
+        response = []
+        try:
+            while not generator.is_done():
+                generator.compute_logits()
+                generator.generate_next_token()
 
+                if self.timings and first:
+                    first_token_timestamp = time.time()
+                    first = False
 
+                new_token = generator.get_next_tokens()[0]
+                decoded_token = self.tokenizer_stream.decode(new_token)
+                response.append(decoded_token)
+                
+                if self.timings:
+                    new_tokens.append(new_token)
 
+                print(decoded_token, end='', flush=True)  # Print the response token-by-token
 
-# Example usage
-if __name__ == "__main__":
-    # Instantiate the ONNX model handler
-    onnx_handler = PhiONNXModelHandler(device="cpu")
+        except KeyboardInterrupt:
+            print("Generation interrupted by user.")
 
-    # Load the model
-    onnx_handler.load_model()
+        # Clean up the generator
+        del generator
 
-    # Create a prompt
-    question = "What is the capital of France?"
-    prompt = onnx_handler.create_prompt(question)
+        if self.timings:
+            prompt_time = first_token_timestamp - started_timestamp
+            run_time = time.time() - first_token_timestamp
+            print(f"\nPrompt length: {len(input_tokens)}, New tokens: {len(new_tokens)}")
+            print(f"Time to first token: {prompt_time:.2f}s, Prompt tokens per second: {len(input_tokens) / prompt_time:.2f} tps")
+            print(f"New tokens per second: {len(new_tokens) / run_time:.2f} tps")
 
-    # Generate an answer
-    answer = onnx_handler.generate_answer(prompt)
-    print(answer)
+        # Return the full response
+        return ''.join(response)
+
+# Example usage:
+# handler = phiONNXHandler("path_to_onnx_model", verbose=True, timings=True)
+# handler.load_model()
+# prompt = handler.create_prompt("What is the capital of France?")
+# answer = handler.generate_answer(prompt, max_length=100, temperature=0.7, top_k=50)
+# print("\nGenerated Answer:", answer)

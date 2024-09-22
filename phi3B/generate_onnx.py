@@ -33,6 +33,27 @@ class PhiONNXModelHandler:
         """
         return template.format(input=input_text)
 
+    def chat_mode(self, args):
+        """
+        Interactive chat mode where the user inputs prompts, and the model generates responses.
+        """
+        chat_template = '<|user|>\n{input} <|end|>\n<|assistant|>'
+        print("Entering chat mode. Type 'exit' to quit.")
+
+        while True:
+            text = input("Input: ")
+            if text.lower() == 'exit':
+                print("Exiting chat mode.")
+                break
+
+            if not text:
+                print("Error, input cannot be empty")
+                continue
+
+            prompt = self.create_prompt(text, template=chat_template)
+            answer = self.generate_answer(prompt, args)
+            print(f"Output: {answer}")
+
     def generate_answer(self, prompt: str, args):
         """
         Generate a response based on the prompt and search options passed as arguments.
@@ -45,7 +66,7 @@ class PhiONNXModelHandler:
         top_k = args.get('top_k', 50)
         temperature = args.get('temperature', 1.0)
         repetition_penalty = args.get('repetition_penalty', 1.0)
-        
+
         search_options = {
             'do_sample': do_sample,
             'max_length': max_length,
@@ -117,8 +138,11 @@ class PhiONNXModelHandler:
         return ''.join(response)
 
 # Example usage:
-# handler = phiONNXHandler("path_to_onnx_model", verbose=True, timings=True)
-# handler.load_model()
-# prompt = handler.create_prompt("What is the capital of France?")
-# answer = handler.generate_answer(prompt, max_length=100, temperature=0.7, top_k=50)
-# print("\nGenerated Answer:", answer)
+# handler = PhiONNXModelHandler(verbose=True, timings=True)
+# handler.load_model("path_to_onnx_model")
+# args = {
+#     'max_length': 100,
+#     'temperature': 0.7,
+#     'top_k': 50
+# }
+# handler.chat_mode(args)

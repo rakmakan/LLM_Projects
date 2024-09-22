@@ -3,7 +3,7 @@ from utils import get_logger
 import json
 from sklearn.model_selection import train_test_split
 from utils import download_save_raw_model, download_save_onnx_models
-from models import model_bindings
+from models import ModelClassBindings
 logger = get_logger()
 
 
@@ -21,7 +21,7 @@ class Train():
         self.X_train, self.y_train, self.X_text, self.y_test = train_test_split(self.df['text'], self.df['label'], test_size=test_size, random_state=42)
 
 
-class Inference():
+class Inference_LLM():
     def __init__(self, model_name):
         logger.info('Inference class initialized')
         self.model_name = model_name
@@ -35,13 +35,19 @@ class Inference():
     def generate_answer(self, question):   
 
         model_path = self.config['model_path']
-        handler = model_bindings[self.model_name].value()
+        handler = ModelClassBindings[self.model_name].value()
         handler.load_model(model_path)
         prompt = handler.create_prompt(question)
         answer = handler.generate_answer(prompt, self.config['args'])
 
+    def chat_mode(self):
+        handler = ModelClassBindings[self.model_name].value()
+        handler.load_model(self.config['model_path'])
+        handler.chat_mode(self.config['args'])
+
 if __name__ == '__main__':
-    Inference_obj = Inference("phi_onnx") 
+    Inference_obj = Inference_LLM("phi_onnx") 
     Inference_obj.generate_answer("What is the capital of France?")
+    Inference_obj.chat_mode()
     
 

@@ -2,7 +2,7 @@ from enum import Enum
 from phi3B import PhiONNXModelHandler
 
 
-class model_bindings(Enum):
+class ModelClassBindings(Enum):
     """
     Enum class to represent the model bindings
     """

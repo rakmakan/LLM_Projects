@@ -47,7 +47,16 @@ class Inference_LLM():
 
 if __name__ == '__main__':
     Inference_obj = Inference_LLM("phi_onnx") 
-    Inference_obj.generate_answer("What is the capital of France?")
-    Inference_obj.chat_mode()
+    Inference_obj.generate_answer("""
+def quick_sort(arr):
+    if len(arr) <= 1:
+        return arr
+    pivot = arr[0]
+    left = []
+    right = []
+<|fim_hole|>
+    return quick_sort(left) + [pivot] + quick_sort(right)
+""")
+    # Inference_obj.chat_mode()
     
 

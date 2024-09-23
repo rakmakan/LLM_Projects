@@ -15,6 +15,21 @@
             "device" : "cpu"
         }
     },
+    "deep_seek" : {
+        "model_name" : "deepseek-ai/deepseek-coder-6.7b-instruct",
+        "model_path" : "/teamspace/studios/this_studio/models/deep_seek",
+        "model_type" : "raw",
+        "args" : {
+            "max_length" : 400, 
+            "temperature" : 0.1,
+            "top_k" : 10,
+            "top_p" : 0.9,
+            "repetition_penalty" : 1.0,
+            "do_sample" : true,
+            "num_return_sequences" : 1,
+            "device" : "cpu"
+        }
+    },
     "phi_tflite" : {
         "model_name" : "phi",
         "model_path" : "LLM_Projects/phi_tflite/phi.tflite",

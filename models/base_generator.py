@@ -11,7 +11,7 @@ class HuggingFaceModelHandler(ABC):
         self.tokenizer = None
 
     @abstractmethod
-    def load_model(self):
+    def load_model(self, model_path=None):
         """
         Abstract method to load the model and tokenizer.
         """

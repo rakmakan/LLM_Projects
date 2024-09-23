@@ -52,7 +52,6 @@ class PhiONNXModelHandler:
 
             prompt = self.create_prompt(text, template=chat_template)
             answer = self.generate_answer(prompt, args)
-            print(f"Output: {answer}")
 
     def generate_answer(self, prompt: str, args):
         """

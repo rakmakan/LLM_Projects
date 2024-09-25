@@ -26,7 +26,8 @@ class PhiONNXModelHandler:
 
         if self.verbose: 
             print("Model and tokenizer loaded")
-
+        return self.model
+        
     def create_prompt(self, input_text: str, template: str = '<|user|>\n{input} <|end|>\n<|assistant|>'):
         """
         Create a prompt using the specified template and input text.

@@ -17,6 +17,10 @@ onnxruntime = "^1.19.2"
 torch = "^2.4.1"
 onnx = "^1.16.2"
 ipykernel = "^6.29.5"
+llama-index = "^0.11.13"
+pypdf2 = "^3.0.1"
+fastapi = "^0.115.0"
+uvicorn = "^0.30.6"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
